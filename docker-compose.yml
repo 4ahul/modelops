@@ -1,3 +1,6 @@
+# Local development stack. Postgres and Redis are exposed on the host so tests
+# and the CLI can reach them; the api service is optional (`--profile api`) so
+# `docker compose up -d` stays a fast dependency-only start.
 services:
   postgres:
     image: postgres:16
@@ -10,18 +13,58 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U modelops"]
+      test: ["CMD-SHELL", "pg_isready -U modelops -d modelops_dev"]
       interval: 5s
+      timeout: 3s
       retries: 10
 
   redis:
     image: redis:7-alpine
+    # Persistence off: everything Redis holds here is provider health and rate
+    # limit counters, all of which are meant to be short-lived and rebuildable.
+    command: redis-server --save "" --appendonly no
     ports:
       - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
+      timeout: 3s
       retries: 10
+
+  api:
+    profiles: ["api"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+asyncpg://modelops:modelops_dev@postgres:5432/modelops_dev
+      REDIS_URL: redis://redis:6379/0
+      LOG_FORMAT: console
+      # Read from the host environment, never written into the image.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      API_KEY_HASHES: ${API_KEY_HASHES:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  migrate:
+    profiles: ["api"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://modelops:modelops_dev@postgres:5432/modelops_dev
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:

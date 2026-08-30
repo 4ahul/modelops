@@ -7,9 +7,19 @@ venv/
 .mypy_cache/
 .ruff_cache/
 .coverage
+.coverage.*
+htmlcov/
 node_modules/
 dist/
 build/
-.env
-*.db
 .DS_Store
+
+# Secrets. .env.example is the documented template and is tracked.
+.env
+.env.*
+!.env.example
+
+# Local databases and eval scratch files
+*.db
+*.sqlite3
+*.log

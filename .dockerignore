@@ -1,0 +1,27 @@
+.git
+.gitignore
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+.pytest_cache
+.ruff_cache
+.mypy_cache
+htmlcov
+.coverage
+.coverage.*
+# Never bake secrets into an image layer. Layers are extractable even after a
+# later RUN deletes the file.
+.env
+.env.*
+!.env.example
+frontend/node_modules
+frontend/dist
+docs
+tests
+*.md
+!README.md
+*.db
+*.sqlite3
